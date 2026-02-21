@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "E:\Radioside\backend\routes\predict.py", line 14, in <module>
+    import torch
+  File "C:\Users\ashwa\anaconda3\Lib\site-packages\torch\__init__.py", line 34, in <module>
+    from typing_extensions import ParamSpec as _ParamSpec, TypeIs as _TypeIs
+ImportError: cannot import name 'TypeIs' from 'typing_extensions' (C:\Users\ashwa\anaconda3\Lib\site-packages\typing_extensions.py)

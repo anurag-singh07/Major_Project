@@ -1,0 +1,55 @@
+# ── Node / Next.js ─────────────────────────────
+node_modules/
+.next/
+out/
+build/
+npm-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ── Environment (NEVER push secrets) ───────────
+.env
+.env.local
+.env.*.local
+*.env
+
+# ── Python ──────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+.venv/
+venv/
+env/
+.pytest_cache/
+
+# ── Firebase credentials (SECRET!) ─────────────
+*.json
+!backend/data/class_names.json
+!package.json
+!package-lock.json
+!jsconfig.json
+!next.config*.json
+!tsconfig.json
+
+# ── ML model & data (too large for GitHub) ─────
+backend/models/*.pth
+backend/models/*.pt
+backend/data/embeddings.pkl
+backend/data/*.pkl
+
+# ── OS & IDE ────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ── Logs ────────────────────────────────────────
+*.log
+training.log
+logs/
