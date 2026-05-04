@@ -100,6 +100,28 @@ def overlay_heatmap(original_img: np.ndarray,
     return overlay
 
 
+def classifier_weight_cam(activations: torch.Tensor,
+                          classifier: torch.nn.Module,
+                          class_idx: int,
+                          output_size: tuple[int, int]) -> np.ndarray:
+    """
+    Lightweight CAM for memory-constrained CPU deploys.
+    Uses final classifier weights with last convolution activations.
+    """
+    linear = classifier[-1] if isinstance(classifier, torch.nn.Sequential) else classifier
+    weights = linear.weight[class_idx].detach().to(activations.device)
+    acts = activations[0].detach()
+    cam = torch.relu((weights[:, None, None] * acts).sum(dim=0)).cpu().numpy()
+
+    if cam.max() > cam.min():
+        cam = (cam - cam.min()) / (cam.max() - cam.min())
+    else:
+        cam = np.zeros_like(cam)
+
+    height, width = output_size
+    return cv2.resize(cam.astype(np.float32), (width, height))
+
+
 def compute_severity(heatmap: np.ndarray, threshold: float = 0.5) -> float:
     """
     Severity = 100 * (0.7 * Afraction + 0.3 * Imean)

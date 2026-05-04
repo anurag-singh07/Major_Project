@@ -19,7 +19,7 @@ from fastapi import APIRouter, UploadFile, File, HTTPException
 from pydantic import BaseModel
 
 from utils.model_loader  import get_model, get_device
-from utils.gradcam       import GradCAM, overlay_heatmap, compute_severity
+from utils.gradcam       import classifier_weight_cam, overlay_heatmap, compute_severity
 from utils.preprocess    import preprocess_image
 from utils.firebase_utils import upload_heatmap
 
@@ -81,8 +81,15 @@ async def predict(file: UploadFile = File(...)):
     # ── Model inference ───────────────────────────────────────────
     model.eval()
     input_tensor = tensor.to(device)
+    captured = {}
+
+    def capture_activations(_module, _input, output):
+        captured["activations"] = output.detach()
+
+    hook = model.features[-1].register_forward_hook(capture_activations)
     with torch.no_grad():
         logits, embedding = model(input_tensor)
+        hook.remove()
         probs_tensor      = torch.sigmoid(logits)[0]  # (14,)
         probs             = probs_tensor.cpu().numpy()
         embedding_list    = embedding[0].cpu().numpy().tolist()
@@ -106,11 +113,12 @@ async def predict(file: UploadFile = File(...)):
 
     # ── Grad-CAM heatmap ─────────────────────────────────────────
     target_idx = None if is_normal else max_idx
-    grad_cam = GradCAM(model)
-    try:
-        heatmap = grad_cam.generate(input_tensor, class_idx=target_idx, device=device)
-    finally:
-        grad_cam.close()
+    heatmap = classifier_weight_cam(
+        captured["activations"],
+        model.classifier,
+        target_idx if target_idx is not None else max_idx,
+        display_img.shape[:2],
+    )
     overlay    = overlay_heatmap(display_img, heatmap)
 
     # ── Severity score ────────────────────────────────────────────
@@ -130,7 +138,7 @@ async def predict(file: UploadFile = File(...)):
         f"Top: {[f['disease'] for f in top_findings]}"
     )
 
-    del input_tensor, logits, embedding, probs_tensor
+    del input_tensor, logits, embedding, probs_tensor, captured
     gc.collect()
 
     return PredictionResult(
