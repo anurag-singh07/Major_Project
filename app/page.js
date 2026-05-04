@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
 import DiagnosisResult from '@/components/DiagnosisResult'
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://major-project-0plz.onrender.com'
 
 const LOADING_STEPS = [
     'Preprocessing chest X-ray image…',
