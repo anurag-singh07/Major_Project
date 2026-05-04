@@ -3,6 +3,7 @@ Model Loader — loads EfficientNet-V2-S from .pth file on startup.
 Singleton pattern: model loads once, reused on every request.
 """
 import os
+import gc
 import logging
 import torch
 import torch.nn as nn
@@ -41,6 +42,7 @@ def load_model_on_startup():
     global _model, _device
     model_path = os.getenv("MODEL_PATH", "./models/model.pth")
     _device    = "cuda" if torch.cuda.is_available() else "cpu"
+    torch.set_num_threads(1)
 
     if not os.path.exists(model_path):
         log.warning(
@@ -71,6 +73,10 @@ def load_model_on_startup():
         log.warning(f"  Unexpected keys (skipped): {len(unexpected)}")
     if missing:
         log.warning(f"  Missing keys (random init): {len(missing)}")
+
+    del checkpoint
+    del state
+    gc.collect()
 
     _model.to(_device)
     _model.eval()
