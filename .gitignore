@@ -38,6 +38,7 @@ env/
 # ── ML model & data (too large for GitHub) ─────
 backend/models/*.pth
 backend/models/*.pt
+!backend/models/model.pth
 backend/data/embeddings.pkl
 backend/data/*.pkl
 
