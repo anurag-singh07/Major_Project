@@ -4,7 +4,14 @@ import { useState, useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
 import DiagnosisResult from '@/components/DiagnosisResult'
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://major-project-0plz.onrender.com'
+const DEPLOYED_API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://major-project-0plz.onrender.com'
+
+function getApiBase() {
+    if (typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname)) {
+        return 'http://127.0.0.1:8000'
+    }
+    return DEPLOYED_API_BASE
+}
 
 const LOADING_STEPS = [
     'Preprocessing chest X-ray image…',
@@ -62,9 +69,10 @@ export default function HomePage() {
         setLoading(true); setError(null); setResult(null); setStepIdx(0)
         let si = 0
         const iv = setInterval(() => { si = (si + 1) % LOADING_STEPS.length; setStepIdx(si) }, 1800)
+        const apiBase = getApiBase()
         try {
             const fd = new FormData(); fd.append('file', file)
-            const res = await fetch(`${API_BASE}/predict`, { method: 'POST', body: fd })
+            const res = await fetch(`${apiBase}/predict`, { method: 'POST', body: fd })
             if (!res.ok) {
                 const e = await res.json().catch(() => ({ detail: res.statusText }))
                 throw new Error(e.detail || 'Analysis failed')
@@ -72,7 +80,7 @@ export default function HomePage() {
             const data = await res.json()
             let similar = []
             try {
-                const sr = await fetch(`${API_BASE}/similarity`, {
+                const sr = await fetch(`${apiBase}/similarity`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ embedding: data.embedding, top_k: 5 }),
@@ -81,7 +89,7 @@ export default function HomePage() {
             } catch (_) { }
             setResult({ ...data, similar_cases: similar })
         } catch (e) {
-            setError(e.message)
+            setError(`${e.message} (${apiBase}/predict)`)
         } finally {
             clearInterval(iv); setLoading(false)
         }
