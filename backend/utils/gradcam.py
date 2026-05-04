@@ -24,8 +24,8 @@ class GradCAM:
         self.activations = None
 
         target_layer = model.features[-1]
-        target_layer.register_forward_hook(self._forward_hook)
-        target_layer.register_full_backward_hook(self._backward_hook)
+        self._forward_handle = target_layer.register_forward_hook(self._forward_hook)
+        self._backward_handle = target_layer.register_full_backward_hook(self._backward_hook)
 
     def _forward_hook(self, module, input, output):
         self.activations = output.detach()
@@ -46,7 +46,7 @@ class GradCAM:
         self.model.eval()
         image_tensor = image_tensor.to(device)
 
-        self.model.zero_grad()
+        self.model.zero_grad(set_to_none=True)
         logits, _ = self.model(image_tensor)
         probs      = torch.sigmoid(logits)
 
@@ -72,9 +72,14 @@ class GradCAM:
         else:
             cam = np.zeros_like(cam)
 
-        # Resize to 512x512
-        cam = cv2.resize(cam.astype(np.float32), (512, 512))
+        # Resize to match the preprocessed display image.
+        height, width = image_tensor.shape[-2:]
+        cam = cv2.resize(cam.astype(np.float32), (width, height))
         return cam
+
+    def close(self):
+        self._forward_handle.remove()
+        self._backward_handle.remove()
 
 
 def overlay_heatmap(original_img: np.ndarray,

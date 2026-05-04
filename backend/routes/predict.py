@@ -8,6 +8,7 @@ Accepts a chest X-ray image, returns:
 """
 import json
 import os
+import gc
 import base64
 import logging
 import numpy as np
@@ -79,17 +80,12 @@ async def predict(file: UploadFile = File(...)):
 
     # ── Model inference ───────────────────────────────────────────
     model.eval()
-    grad_cam = GradCAM(model)
-
+    input_tensor = tensor.to(device)
     with torch.no_grad():
-        # We need gradients for Grad-CAM, so we run forward here via GradCAM
-        pass
-
-    # Run predict with grad for Grad-CAM
-    logits, embedding = model(tensor.to(device))  # initial forward
-    probs_tensor      = torch.sigmoid(logits)[0]  # (14,)
-    probs             = probs_tensor.detach().cpu().numpy()
-    embedding_list    = embedding[0].detach().cpu().numpy().tolist()
+        logits, embedding = model(input_tensor)
+        probs_tensor      = torch.sigmoid(logits)[0]  # (14,)
+        probs             = probs_tensor.cpu().numpy()
+        embedding_list    = embedding[0].cpu().numpy().tolist()
 
     # ── Probabilities dict ────────────────────────────────────────
     prob_dict = {cls: float(round(float(p), 4)) for cls, p in zip(CLASS_NAMES, probs)}
@@ -110,7 +106,11 @@ async def predict(file: UploadFile = File(...)):
 
     # ── Grad-CAM heatmap ─────────────────────────────────────────
     target_idx = None if is_normal else max_idx
-    heatmap    = grad_cam.generate(tensor, class_idx=target_idx, device=device)
+    grad_cam = GradCAM(model)
+    try:
+        heatmap = grad_cam.generate(input_tensor, class_idx=target_idx, device=device)
+    finally:
+        grad_cam.close()
     overlay    = overlay_heatmap(display_img, heatmap)
 
     # ── Severity score ────────────────────────────────────────────
@@ -129,6 +129,9 @@ async def predict(file: UploadFile = File(...)):
         f"Severity: {severity:.1f} | "
         f"Top: {[f['disease'] for f in top_findings]}"
     )
+
+    del input_tensor, logits, embedding, probs_tensor
+    gc.collect()
 
     return PredictionResult(
         prediction     = prediction,
